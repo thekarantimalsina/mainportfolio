@@ -1,0 +1,106 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+.page{width:100%;min-height:500px;background:#E8400C;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:none;}
+canvas{position:absolute;inset:0;width:100%;height:100%;}
+.center{position:relative;z-index:2;text-align:center;pointer-events:none;}
+.word1{font-family:'Anton',impact,sans-serif;font-size:clamp(80px,16vw,180px);color:#F5C842;line-height:0.88;display:block;-webkit-text-stroke:4px #1A1A1A;}
+.word2{font-family:'Anton',impact,sans-serif;font-size:clamp(80px,16vw,180px);color:#F0EDE4;line-height:0.88;display:block;-webkit-text-stroke:4px #1A1A1A;}
+</style>
+<div class="page" id="page">
+  <canvas id="c"></canvas>
+  <div class="center">
+    <span class="word1">COMING</span>
+    <span class="word2">SOON</span>
+  </div>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const page = document.getElementById('page');
+let W, H, mx=0, my=0;
+
+function resize(){
+  W = canvas.width = page.offsetWidth;
+  H = canvas.height = page.offsetHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const palette = ['#F5C842','#00897B','#E91E8C','#1A1A1A','#F0EDE4'];
+const cursors = ['circle','ring','cross','dot'];
+let cursorType = 0;
+
+const circles = Array.from({length:6}, (_,i)=>({
+  x: Math.random()*W,
+  y: Math.random()*H,
+  r: 40 + i*20,
+  vx: (Math.random()-0.5)*0.4,
+  vy: (Math.random()-0.5)*0.4,
+  color: palette[i % palette.length],
+  alpha: 0.15 + Math.random()*0.1
+}));
+
+page.addEventListener('mousemove', e=>{
+  const rect = page.getBoundingClientRect();
+  mx = e.clientX - rect.left;
+  my = e.clientY - rect.top;
+});
+
+page.addEventListener('click', ()=>{
+  cursorType = (cursorType+1) % cursors.length;
+});
+
+function drawCursor(){
+  const type = cursors[cursorType];
+  const color = palette[cursorType];
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = 1;
+  if(type==='circle'){
+    ctx.beginPath();
+    ctx.arc(mx,my,12,0,Math.PI*2);
+    ctx.stroke();
+  } else if(type==='ring'){
+    ctx.beginPath();
+    ctx.arc(mx,my,16,0,Math.PI*2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(mx,my,4,0,Math.PI*2);
+    ctx.fill();
+  } else if(type==='cross'){
+    ctx.beginPath();
+    ctx.moveTo(mx-14,my); ctx.lineTo(mx+14,my);
+    ctx.moveTo(mx,my-14); ctx.lineTo(mx,my+14);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(mx,my,7,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function tick(){
+  ctx.clearRect(0,0,W,H);
+  for(const c of circles){
+    ctx.save();
+    ctx.globalAlpha = c.alpha;
+    ctx.fillStyle = c.color;
+    ctx.beginPath();
+    ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    c.x+=c.vx; c.y+=c.vy;
+    if(c.x<-c.r) c.x=W+c.r;
+    if(c.x>W+c.r) c.x=-c.r;
+    if(c.y<-c.r) c.y=H+c.r;
+    if(c.y>H+c.r) c.y=-c.r;
+  }
+  drawCursor();
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
