@@ -1,106 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coming Soon</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;}
-.page{width:100%;min-height:500px;background:#E8400C;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:none;}
-canvas{position:absolute;inset:0;width:100%;height:100%;}
-.center{position:relative;z-index:2;text-align:center;pointer-events:none;}
-.word1{font-family:'Anton',impact,sans-serif;font-size:clamp(80px,16vw,180px);color:#F5C842;line-height:0.88;display:block;-webkit-text-stroke:4px #1A1A1A;}
-.word2{font-family:'Anton',impact,sans-serif;font-size:clamp(80px,16vw,180px);color:#F0EDE4;line-height:0.88;display:block;-webkit-text-stroke:4px #1A1A1A;}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; cursor: none; }
+  body { background: #E8400C; }
+  canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+  .center {
+    position: fixed; z-index: 2;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    user-select: none;
+  }
+  .word1 {
+    font-family: 'Anton', impact, sans-serif;
+    font-size: clamp(80px, 16vw, 200px);
+    color: #F5C842;
+    line-height: 0.88;
+    display: block;
+    -webkit-text-stroke: 5px #1A1A1A;
+  }
+  .word2 {
+    font-family: 'Anton', impact, sans-serif;
+    font-size: clamp(80px, 16vw, 200px);
+    color: #F0EDE4;
+    line-height: 0.88;
+    display: block;
+    -webkit-text-stroke: 5px #1A1A1A;
+  }
 </style>
-<div class="page" id="page">
-  <canvas id="c"></canvas>
-  <div class="center">
-    <span class="word1">COMING</span>
-    <span class="word2">SOON</span>
-  </div>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="center">
+  <span class="word1">COMING</span>
+  <span class="word2">SOON</span>
 </div>
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-const page = document.getElementById('page');
-let W, H, mx=0, my=0;
+let W, H, mx = -200, my = -200;
 
-function resize(){
-  W = canvas.width = page.offsetWidth;
-  H = canvas.height = page.offsetHeight;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
 }
 resize();
 window.addEventListener('resize', resize);
 
-const palette = ['#F5C842','#00897B','#E91E8C','#1A1A1A','#F0EDE4'];
-const cursors = ['circle','ring','cross','dot'];
+const palette = ['#F5C842', '#00897B', '#E91E8C', '#1A1A1A', '#F0EDE4'];
+const cursorShapes = ['circle', 'ring', 'cross', 'dot'];
 let cursorType = 0;
 
-const circles = Array.from({length:6}, (_,i)=>({
-  x: Math.random()*W,
-  y: Math.random()*H,
-  r: 40 + i*20,
-  vx: (Math.random()-0.5)*0.4,
-  vy: (Math.random()-0.5)*0.4,
+// Floating background circles
+const circles = Array.from({ length: 8 }, (_, i) => ({
+  x: Math.random() * window.innerWidth,
+  y: Math.random() * window.innerHeight,
+  r: 60 + i * 30,
+  vx: (Math.random() - 0.5) * 0.5,
+  vy: (Math.random() - 0.5) * 0.5,
   color: palette[i % palette.length],
-  alpha: 0.15 + Math.random()*0.1
+  alpha: 0.12 + Math.random() * 0.1,
+  pulseOffset: Math.random() * Math.PI * 2
 }));
 
-page.addEventListener('mousemove', e=>{
-  const rect = page.getBoundingClientRect();
-  mx = e.clientX - rect.left;
-  my = e.clientY - rect.top;
+// Trail particles
+const trail = [];
+
+window.addEventListener('mousemove', e => {
+  mx = e.clientX;
+  my = e.clientY;
+  trail.push({ x: mx, y: my, alpha: 1, r: 6 + Math.random() * 4, color: palette[Math.floor(Math.random() * palette.length)] });
+  if (trail.length > 28) trail.shift();
 });
 
-page.addEventListener('click', ()=>{
-  cursorType = (cursorType+1) % cursors.length;
+window.addEventListener('click', () => {
+  cursorType = (cursorType + 1) % cursorShapes.length;
+  // burst on click
+  for (let i = 0; i < 10; i++) {
+    const angle = (Math.PI * 2 / 10) * i;
+    burst.push({
+      x: mx, y: my,
+      vx: Math.cos(angle) * (2 + Math.random() * 3),
+      vy: Math.sin(angle) * (2 + Math.random() * 3),
+      r: 4 + Math.random() * 4,
+      alpha: 1,
+      color: palette[Math.floor(Math.random() * palette.length)]
+    });
+  }
 });
 
-function drawCursor(){
-  const type = cursors[cursorType];
+const burst = [];
+
+function drawCursor(t) {
+  const type = cursorShapes[cursorType];
   const color = palette[cursorType];
   ctx.save();
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = 3;
   ctx.globalAlpha = 1;
-  if(type==='circle'){
+  const pulse = 1 + Math.sin(t * 0.004) * 0.2;
+  const size = 13 * pulse;
+  if (type === 'circle') {
+    ctx.beginPath(); ctx.arc(mx, my, size, 0, Math.PI * 2); ctx.stroke();
+  } else if (type === 'ring') {
+    ctx.beginPath(); ctx.arc(mx, my, size + 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
+  } else if (type === 'cross') {
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(mx,my,12,0,Math.PI*2);
-    ctx.stroke();
-  } else if(type==='ring'){
-    ctx.beginPath();
-    ctx.arc(mx,my,16,0,Math.PI*2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(mx,my,4,0,Math.PI*2);
-    ctx.fill();
-  } else if(type==='cross'){
-    ctx.beginPath();
-    ctx.moveTo(mx-14,my); ctx.lineTo(mx+14,my);
-    ctx.moveTo(mx,my-14); ctx.lineTo(mx,my+14);
+    ctx.moveTo(mx - size, my); ctx.lineTo(mx + size, my);
+    ctx.moveTo(mx, my - size); ctx.lineTo(mx, my + size);
     ctx.stroke();
   } else {
-    ctx.beginPath();
-    ctx.arc(mx,my,7,0,Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(mx, my, size * 0.6, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
 }
 
-function tick(){
-  ctx.clearRect(0,0,W,H);
-  for(const c of circles){
+let t = 0;
+function tick() {
+  t++;
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw floating circles with subtle pulse
+  for (const c of circles) {
+    const pulse = 1 + Math.sin(t * 0.008 + c.pulseOffset) * 0.06;
     ctx.save();
     ctx.globalAlpha = c.alpha;
     ctx.fillStyle = c.color;
     ctx.beginPath();
-    ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
+    ctx.arc(c.x, c.y, c.r * pulse, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    c.x+=c.vx; c.y+=c.vy;
-    if(c.x<-c.r) c.x=W+c.r;
-    if(c.x>W+c.r) c.x=-c.r;
-    if(c.y<-c.r) c.y=H+c.r;
-    if(c.y>H+c.r) c.y=-c.r;
+    c.x += c.vx; c.y += c.vy;
+    if (c.x < -c.r) c.x = W + c.r;
+    if (c.x > W + c.r) c.x = -c.r;
+    if (c.y < -c.r) c.y = H + c.r;
+    if (c.y > H + c.r) c.y = -c.r;
   }
-  drawCursor();
+
+  // Draw trail
+  for (let i = 0; i < trail.length; i++) {
+    const p = trail[i];
+    ctx.save();
+    ctx.globalAlpha = p.alpha * (i / trail.length) * 0.6;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * (i / trail.length), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    p.alpha *= 0.93;
+  }
+
+  // Draw burst particles
+  for (let i = burst.length - 1; i >= 0; i--) {
+    const b = burst[i];
+    ctx.save();
+    ctx.globalAlpha = b.alpha;
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    b.x += b.vx; b.y += b.vy;
+    b.vy += 0.1;
+    b.alpha -= 0.03;
+    if (b.alpha <= 0) burst.splice(i, 1);
+  }
+
+  drawCursor(t);
   requestAnimationFrame(tick);
 }
 tick();
 </script>
+</body>
+</html>
